@@ -1,0 +1,48 @@
+{
+    "name": "sqlitekv",
+    "version": "0.0.1",
+    "main": "dist/index.js",
+    "type": "module",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "start": "node dist/index.js",
+        "build": "tsc",
+        "test": "jest",
+        "watch": "tsc --watch"
+    },
+    "author": {
+        "name": "Dev Rio",
+        "email": "contact@devrio.org"
+    },
+    "keywords": [
+        "sqlite",
+        "sqlite3",
+        "sqlite-kv",
+        "SQLiteKV",
+        "database",
+        "sql"
+    ],
+    "license": "MIT",
+    "devDependencies": {
+        "@types/jest": "^29.5.12",
+        "ts-jest": "^29.0.0",
+        "typescript": "^5.5.4"
+    },
+    "dependencies": {
+        "@types/sqlite3": "^3.1.11",
+        "jest": "^29.7.0",
+        "sqlite": "^5.1.1",
+        "sqlite3": "^5.1.7",
+        "tsx": "^4.16.4",
+        "undici-types": "^6.11.1"
+    },
+    "description": "",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/dev-rio/SQLiteKV.git"
+    },
+    "homepage": "https://github.com/dev-rio/SQLiteKV#readme",
+    "bugs": {
+        "url": "https://github.com/dev-rio/SQLiteKV/issues"
+    }
+}
