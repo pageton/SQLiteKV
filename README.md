@@ -11,6 +11,7 @@ SQLiteKV is a key-value store built on top of SQLite3. This project allows you t
 -   Transaction management
 -   Flexible journal modes (WAL, DELETE, etc.)
 -   In-memory, temporary, and disk-based storage options
+-   Logger mode to track executed SQL queries
 
 ## Installation
 
@@ -33,19 +34,50 @@ pnpm install sqlitekv
 Here is an example of how to set up and use the SQLiteKV store:
 
 ```typescript
-import { SQLiteKV, DatabaseConfig } from "sqlitekv";
+import SQLiteKV from "sqlitekv";
 
 (async () => {
     try {
-        // Database configuration
-        const config: DatabaseConfig = {
-            dbFilename: "example.sqlite",
+        // Initialize the database with configuration
+        const db = new SQLiteKV("example.sqlite", {
             tableName: "example_table",
             autoCommit: true,
             journalMode: "WAL",
-            enableLoopOperations: true
-        };
-        const db = new SQLiteKV(config);
+            enableLoopOperations: true,
+            logQueries: true
+        });
+
+        // Perform some operations
+        await db.set("key1", "value1");
+        const value = await db.get("key1");
+        console.log(`Retrieved value for key1: ${value}`);
+
+        // Check if a key exists
+        const exists = await db.exists("key1");
+        console.log(`Key1 exists: ${exists}`);
+
+        // Delete a key
+        await db.delete("key1");
+        console.log(`Key1 deleted`);
+
+        // Export the database to JSON
+        await db.convertToJson("export.json");
+        console.log("Database exported to export.json");
+    } catch (error) {
+        console.error("Error initializing database:", error);
+    }
+})();
+```
+
+You can also initialize the database without passing the configuration object:
+
+```typescript
+import SQLiteKV from "sqlitekv";
+
+(async () => {
+    try {
+        // Initialize the database with default settings
+        const db = new SQLiteKV("example.sqlite");
 
         // Perform some operations
         await db.set("key1", "value1");
@@ -90,11 +122,11 @@ await db.performLoopOperations(operations, iterations);
 
 You can customize the behavior of SQLiteKV using the following configuration options:
 
--   `dbFilename`: The name of the SQLite database file.
 -   `tableName`: The name of the table used for storing key-value pairs.
 -   `autoCommit`: Whether to automatically commit transactions.
 -   `journalMode`: The journal mode for SQLite (e.g., WAL, DELETE).
 -   `sqliteMode`: The storage mode for SQLite (disk, memory, temp).
+-   `logQueries`: Whether to log executed SQL queries.
 -   `enableLoopOperations`: Whether to enable loop operations.
 
 ## Viewing the SQLite Database
