@@ -4,3 +4,4 @@ tests/
 jest.config.js
 node_modules/
 .gitignore
+dist/types.js
