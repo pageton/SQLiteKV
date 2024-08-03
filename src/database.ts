@@ -127,10 +127,11 @@ export class SQLiteDatabase {
     async setex(
         key: string,
         seconds: number,
-        value: ValueType
+        value: ValueType,
+        oneTime: boolean = false
     ): Promise<boolean> {
         const expiry = Date.now() + seconds * 1000;
-        return this.setWithExpiry(key, value, expiry, false);
+        return this.setWithExpiry(key, value, expiry, oneTime);
     }
 
     private async setWithExpiry(

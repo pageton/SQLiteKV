@@ -78,10 +78,11 @@ export class SQLiteKV implements IKVStore {
     async setex(
         key: string,
         seconds: number,
-        value: ValueType
+        value: ValueType,
+        oneTime: boolean = false
     ): Promise<boolean> {
         await this.ensureInitialized();
-        return this.db.setex(key, seconds, value);
+        return this.db.setex(key, seconds, value, oneTime);
     }
 
     async get(key: string): Promise<ValueType | null> {
