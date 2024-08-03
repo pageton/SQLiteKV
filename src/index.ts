@@ -1,2 +1,3 @@
-export { SQLiteKV } from "./kvstore";
-export * from "./types";
+import { SQLiteKV } from "./kvstore";
+
+export default SQLiteKV;

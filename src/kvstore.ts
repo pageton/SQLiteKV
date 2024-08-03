@@ -3,7 +3,6 @@ import {
     ValueType,
     IKVStore,
     JsonUpdateFunction,
-    DatabaseConfig,
     JournalMode,
     SQLiteMode
 } from "./types";
@@ -13,17 +12,48 @@ export class SQLiteKV implements IKVStore {
     private initPromise: Promise<void>;
     private enableLoopOperations: boolean;
 
-    constructor(config?: DatabaseConfig) {
-        const autoCommit = config?.autoCommit ?? true;
-        const journalMode = config?.journalMode ?? "WAL";
-        const sqliteMode = config?.sqliteMode ?? "disk";
-        this.enableLoopOperations = config?.enableLoopOperations ?? false;
+    constructor(
+        dbFilename: string = "database.sqlite",
+        configOrTableName?:
+            | string
+            | {
+                  tableName?: string;
+                  autoCommit?: boolean;
+                  journalMode?: JournalMode;
+                  sqliteMode?: SQLiteMode;
+                  logQueries?: boolean;
+                  enableLoopOperations?: boolean;
+              }
+    ) {
+        let config: {
+            tableName?: string;
+            autoCommit?: boolean;
+            journalMode?: JournalMode;
+            sqliteMode?: SQLiteMode;
+            logQueries?: boolean;
+            enableLoopOperations?: boolean;
+        } = {};
+
+        if (typeof configOrTableName === "string") {
+            config.tableName = configOrTableName;
+        } else if (typeof configOrTableName === "object") {
+            config = configOrTableName;
+        }
+
+        const tableName = config.tableName ?? "kv_store";
+        const autoCommit = config.autoCommit ?? true;
+        const journalMode = config.journalMode ?? "WAL";
+        const sqliteMode = config.sqliteMode ?? "disk";
+        const logQueries = config.logQueries ?? false;
+        this.enableLoopOperations = config.enableLoopOperations ?? false;
+
         this.db = new SQLiteDatabase(
-            config?.dbFilename,
-            config?.tableName,
+            dbFilename,
+            tableName,
             autoCommit,
             journalMode,
-            sqliteMode
+            sqliteMode,
+            logQueries
         );
         this.initPromise = this.init();
     }

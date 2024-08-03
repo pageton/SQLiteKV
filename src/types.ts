@@ -59,6 +59,7 @@ export interface DatabaseConfig {
     journalMode?: JournalMode;
     sqliteMode?: SQLiteMode;
     enableLoopOperations?: boolean;
+    logQueries?: boolean;
 }
 
 export interface DatabaseInfo {

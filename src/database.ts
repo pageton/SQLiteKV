@@ -12,19 +12,22 @@ export class SQLiteDatabase {
     private dbPath: string;
     private journalMode: JournalMode;
     private sqliteMode: SQLiteMode;
+    private logQueries?: boolean;
 
     constructor(
         private dbFilename: string = "database.sqlite",
         tableName: string = "kv_store",
         autoCommit: boolean = true,
         journalMode: JournalMode = "WAL",
-        sqliteMode: SQLiteMode = "disk"
+        sqliteMode: SQLiteMode = "disk",
+        logQueries: boolean = false
     ) {
         this.tableName = tableName;
         this.autoCommit = autoCommit;
         this.journalMode = journalMode;
         this.sqliteMode = sqliteMode;
         this.dbPath = this.getDbPathByMode(dbFilename, sqliteMode);
+        this.logQueries = logQueries;
     }
 
     private getDbPathByMode(dbFilename: string, mode: SQLiteMode): string {
@@ -36,6 +39,19 @@ export class SQLiteDatabase {
             case "disk":
             default:
                 return path.join(process.cwd(), dbFilename);
+        }
+    }
+
+    private logQuery(query: string, params: any[]): void {
+        if (this.logQueries) {
+            const formattedParams = params.map((param) =>
+                JSON.stringify(param)
+            );
+            let formattedQuery = query;
+            formattedParams.forEach((param) => {
+                formattedQuery = formattedQuery.replace("?", param);
+            });
+            console.log(`Executing Query: ${formattedQuery}`);
         }
     }
 
@@ -58,14 +74,13 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
-        await this.db.run(
-            `CREATE TABLE IF NOT EXISTS ${this.tableName} (
-                key TEXT PRIMARY KEY,
-                value TEXT,
-                expiry INTEGER,
-                one_time INTEGER DEFAULT 0
-            )`
-        );
+        const query = `CREATE TABLE IF NOT EXISTS ${this.tableName} (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            expiry INTEGER,
+            one_time INTEGER DEFAULT 0
+        )`;
+        await this.db.run(query);
     }
 
     public async setJournalMode(mode: JournalMode): Promise<void> {
@@ -73,7 +88,8 @@ export class SQLiteDatabase {
             throw new Error("Database not initialized");
         }
 
-        await this.db.run(`PRAGMA journal_mode = ${mode.toUpperCase()};`);
+        const query = `PRAGMA journal_mode = ${mode.toUpperCase()};`;
+        await this.db.run(query);
 
         const result = await this.db.get("PRAGMA journal_mode;");
         const currentMode = result?.["journal_mode"];
@@ -95,7 +111,8 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
-        const result = await this.db.get("PRAGMA journal_mode;");
+        const query = "PRAGMA journal_mode;";
+        const result = await this.db.get(query);
         return result?.["journal_mode"] as JournalMode;
     }
 
@@ -126,10 +143,10 @@ export class SQLiteDatabase {
             throw new Error("Database not initialized");
         }
         const jsonValue = JSON.stringify(value);
-        await this.db.run(
-            `INSERT OR REPLACE INTO ${this.tableName} (key, value, expiry, one_time) VALUES (?, ?, ?, ?)`,
-            [key, jsonValue, expiry, oneTime ? 1 : 0]
-        );
+        const query = `INSERT OR REPLACE INTO ${this.tableName} (key, value, expiry, one_time) VALUES (?, ?, ?, ?)`;
+        const params = [key, jsonValue, expiry, oneTime ? 1 : 0];
+        this.logQuery(query, params);
+        await this.db.run(query, params);
         if (this.autoCommit && !this.inTransaction) {
             await this.commitTransaction();
         }
@@ -140,10 +157,10 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
-        const result = await this.db.get(
-            `SELECT value, expiry, one_time FROM ${this.tableName} WHERE key = ?`,
-            [key]
-        );
+        const query = `SELECT value, expiry, one_time FROM ${this.tableName} WHERE key = ?`;
+        const params = [key];
+        this.logQuery(query, params);
+        const result = await this.db.get(query, params);
 
         if (!result || !result.value) {
             return "Key does not exist";
@@ -169,10 +186,10 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
-        const result = await this.db.run(
-            `DELETE FROM ${this.tableName} WHERE key = ?`,
-            [key]
-        );
+        const query = `DELETE FROM ${this.tableName} WHERE key = ?`;
+        const params = [key];
+        this.logQuery(query, params);
+        const result = await this.db.run(query, params);
         if (this.autoCommit && !this.inTransaction) {
             await this.commitTransaction();
         }
@@ -185,10 +202,10 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
-        const result = await this.db.get(
-            `SELECT 1 FROM ${this.tableName} WHERE key = ?`,
-            [key]
-        );
+        const query = `SELECT 1 FROM ${this.tableName} WHERE key = ?`;
+        const params = [key];
+        this.logQuery(query, params);
+        const result = await this.db.get(query, params);
         return result !== undefined;
     }
 
@@ -213,9 +230,8 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
-        const result = await this.db.all(
-            `SELECT key, value FROM ${this.tableName}`
-        );
+        const query = `SELECT key, value FROM ${this.tableName}`;
+        const result = await this.db.all(query);
         const jsonObject: { [key: string]: ValueType } = {};
         result.forEach((row: Row) => {
             const key = row.key;
@@ -239,6 +255,7 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
+        this.logQuery("CLOSE DATABASE", []);
         await this.db.close();
         this.db = null;
     }
@@ -257,7 +274,9 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
-        await this.db.run("BEGIN TRANSACTION");
+        const query = "BEGIN TRANSACTION";
+        this.logQuery(query, []);
+        await this.db.run(query);
         this.inTransaction = true;
     }
 
@@ -266,7 +285,9 @@ export class SQLiteDatabase {
             throw new Error("Database not initialized");
         }
         if (this.inTransaction) {
-            await this.db.run("COMMIT");
+            const query = "COMMIT";
+            this.logQuery(query, []);
+            await this.db.run(query);
             this.inTransaction = false;
         }
     }
@@ -275,10 +296,10 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
-        const result = await this.db.get(
-            `SELECT expiry FROM ${this.tableName} WHERE key = ?`,
-            [key]
-        );
+        const query = `SELECT expiry FROM ${this.tableName} WHERE key = ?`;
+        const params = [key];
+        this.logQuery(query, params);
+        const result = await this.db.get(query, params);
 
         if (!result || !result.expiry) {
             return "Key does not exist";
@@ -296,7 +317,9 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
-        await this.db.run(`DELETE FROM ${this.tableName}`);
+        const query = `DELETE FROM ${this.tableName}`;
+        this.logQuery(query, []);
+        await this.db.run(query);
     }
 
     async getInfo(): Promise<{
