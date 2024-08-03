@@ -142,7 +142,28 @@ export class SQLiteDatabase {
         if (!this.db) {
             throw new Error("Database not initialized");
         }
-        const jsonValue = JSON.stringify(value);
+
+        const existingValue = await this.get(key);
+        let newValue: ValueType;
+
+        if (existingValue !== null) {
+            if (typeof value === "string") {
+                newValue = value;
+            } else if (Array.isArray(existingValue) && Array.isArray(value)) {
+                newValue = existingValue.concat(value);
+            } else if (
+                typeof existingValue === "object" &&
+                typeof value === "object"
+            ) {
+                newValue = { ...existingValue, ...value };
+            } else {
+                newValue = value;
+            }
+        } else {
+            newValue = value;
+        }
+
+        const jsonValue = JSON.stringify(newValue);
         const query = `INSERT OR REPLACE INTO ${this.tableName} (key, value, expiry, one_time) VALUES (?, ?, ?, ?)`;
         const params = [key, jsonValue, expiry, oneTime ? 1 : 0];
         this.logQuery(query, params);
