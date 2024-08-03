@@ -153,9 +153,9 @@ export class SQLiteDatabase {
         return true;
     }
 
-    async get(key: string): Promise<ValueType | string> {
+    async get(key: string): Promise<ValueType | null> {
         if (!this.db) {
-            throw new Error("Database not initialized");
+            return null;
         }
         const query = `SELECT value, expiry, one_time FROM ${this.tableName} WHERE key = ?`;
         const params = [key];
@@ -163,7 +163,7 @@ export class SQLiteDatabase {
         const result = await this.db.get(query, params);
 
         if (!result || !result.value) {
-            return "Key does not exist";
+            return null;
         }
 
         if (
@@ -172,7 +172,7 @@ export class SQLiteDatabase {
             result.expiry < Date.now()
         ) {
             await this.delete(key);
-            return "Key has expired";
+            return null;
         }
 
         if (result.one_time && result.one_time === 1) {
@@ -292,9 +292,9 @@ export class SQLiteDatabase {
         }
     }
 
-    async ttl(key: string): Promise<number | string> {
+    async ttl(key: string): Promise<number | null> {
         if (!this.db) {
-            throw new Error("Database not initialized");
+            return null;
         }
         const query = `SELECT expiry FROM ${this.tableName} WHERE key = ?`;
         const params = [key];
@@ -302,14 +302,14 @@ export class SQLiteDatabase {
         const result = await this.db.get(query, params);
 
         if (!result || !result.expiry) {
-            return "Key does not exist";
+            return null;
         }
 
         if (typeof result.expiry === "number") {
             const timeLeft = result.expiry - Date.now();
             return Math.max(timeLeft, 0);
         } else {
-            return "Invalid expiry time";
+            return null;
         }
     }
 
@@ -329,9 +329,9 @@ export class SQLiteDatabase {
         tableName: string;
         dbSize: number;
         keysCount: number;
-    }> {
+    } | null> {
         if (!this.db) {
-            throw new Error("Database not initialized");
+            return null;
         }
         const journalMode = await this.getJournalMode();
         const dbSize = (await fs.stat(this.dbPath)).size;

@@ -84,9 +84,13 @@ export class SQLiteKV implements IKVStore {
         return this.db.setex(key, seconds, value);
     }
 
-    async get(key: string): Promise<ValueType | string> {
+    async get(key: string): Promise<ValueType | null> {
         await this.ensureInitialized();
-        return this.db.get(key);
+        const value = await this.db.get(key);
+        if (value === null) {
+            return null;
+        }
+        return value;
     }
 
     async delete(key: string): Promise<boolean> {
@@ -165,9 +169,10 @@ export class SQLiteKV implements IKVStore {
         return null;
     }
 
-    async mget(...keys: string[]): Promise<(ValueType | string)[]> {
+    async mget(...keys: string[]): Promise<ValueType[]> {
         await this.ensureInitialized();
-        return Promise.all(keys.map((key) => this.get(key)));
+        const values = await Promise.all(keys.map((key) => this.get(key)));
+        return values.filter((value): value is ValueType => value !== null);
     }
 
     async beginTransaction(): Promise<void> {
@@ -182,7 +187,12 @@ export class SQLiteKV implements IKVStore {
 
     async ttl(key: string): Promise<number | string> {
         await this.ensureInitialized();
-        return this.db.ttl(key);
+        const result = await this.db.ttl(key);
+        if (typeof result === "number" || typeof result === "string") {
+            return result;
+        } else {
+            throw new Error(`Unexpected result type: ${typeof result}`);
+        }
     }
 
     async setJournalMode(mode: JournalMode): Promise<void> {
@@ -204,7 +214,20 @@ export class SQLiteKV implements IKVStore {
         keysCount: number;
     }> {
         await this.ensureInitialized();
-        return this.db.getInfo();
+        const result = await this.db.getInfo();
+        if (
+            result &&
+            "journalMode" in result &&
+            "dbPath" in result &&
+            "dbFilename" in result &&
+            "tableName" in result &&
+            "dbSize" in result &&
+            "keysCount" in result
+        ) {
+            return result;
+        } else {
+            throw new Error(`Unexpected result type: ${typeof result}`);
+        }
     }
 
     async checkJournalFile(): Promise<boolean> {
