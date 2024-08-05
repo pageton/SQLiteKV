@@ -44,10 +44,6 @@ export interface IKVStore extends ISQLiteDatabase {
     getAll(): Promise<{ [key: string]: ValueType }>;
     clear(): Promise<boolean>;
     size(): Promise<number>;
-    updateJson(
-        key: string,
-        updateFunction: JsonUpdateFunction
-    ): Promise<boolean>;
     increment(key: string, amount?: number): Promise<number | null>;
     mget(...keys: string[]): Promise<(ValueType | null)[]>;
 }
