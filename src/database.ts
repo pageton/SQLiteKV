@@ -92,7 +92,6 @@ export class SQLiteDatabase {
         await this.db.run(query);
 
         const result = await this.db.get("PRAGMA journal_mode;");
-        const currentMode = result?.["journal_mode"];
     }
 
     getDbPath(): string {
@@ -144,31 +143,12 @@ export class SQLiteDatabase {
             throw new Error("Database not initialized");
         }
 
-        const existingValue = await this.get(key);
-        let newValue: ValueType;
-
-        if (existingValue !== null) {
-            if (typeof value === "string") {
-                newValue = value;
-            } else if (Array.isArray(existingValue) && Array.isArray(value)) {
-                newValue = existingValue.concat(value);
-            } else if (
-                typeof existingValue === "object" &&
-                typeof value === "object"
-            ) {
-                newValue = { ...existingValue, ...value };
-            } else {
-                newValue = value;
-            }
-        } else {
-            newValue = value;
-        }
-
-        const jsonValue = JSON.stringify(newValue);
+        const jsonValue = JSON.stringify(value);
         const query = `INSERT OR REPLACE INTO ${this.tableName} (key, value, expiry, one_time) VALUES (?, ?, ?, ?)`;
         const params = [key, jsonValue, expiry, oneTime ? 1 : 0];
         this.logQuery(query, params);
         await this.db.run(query, params);
+
         if (this.autoCommit && !this.inTransaction) {
             await this.commitTransaction();
         }
@@ -342,52 +322,5 @@ export class SQLiteDatabase {
         const query = `DELETE FROM ${this.tableName}`;
         this.logQuery(query, []);
         await this.db.run(query);
-    }
-
-    async getInfo(): Promise<{
-        journalMode: JournalMode;
-        dbPath: string;
-        dbFilename: string;
-        tableName: string;
-        dbSize: number;
-        keysCount: number;
-    } | null> {
-        if (!this.db) {
-            return null;
-        }
-        const journalMode = await this.getJournalMode();
-        const dbSize = (await fs.stat(this.dbPath)).size;
-        const keysCount = (await this.keys()).length;
-
-        return {
-            journalMode,
-            dbPath: this.dbPath,
-            dbFilename: this.dbFilename,
-            tableName: this.tableName,
-            dbSize,
-            keysCount
-        };
-    }
-
-    async checkJournalFile(): Promise<boolean> {
-        const journalPath = this.dbPath + "-journal";
-        try {
-            await fs.access(journalPath);
-            return true;
-        } catch {
-            return false;
-        }
-    }
-
-    async performLoopOperations(
-        operations: () => Promise<void>,
-        iterations: number
-    ): Promise<void> {
-        if (!this.db) {
-            throw new Error("Database not initialized");
-        }
-        for (let i = 0; i < iterations; i++) {
-            await operations();
-        }
     }
 }
